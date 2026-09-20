@@ -1,24 +1,21 @@
 // ============================================================================
-// Google Drive backup — the REAL thing (not a share-sheet).
+// Google Drive backup — works in BOTH the Android app and the website.
 // ----------------------------------------------------------------------------
-// This signs the owner into their Google account (once) and then uploads the
-// backup file directly into a private "NextGen Accounts" folder in THEIR
-// Google Drive, using Google's official Drive API. To restore on another
-// phone, they sign in with the same Google account and tap "Restore from
-// Google Drive" — it lists the backups and pulls the one they pick.
-//
-// SETUP REQUIRED (one time, done by you in Google Cloud Console — the README
-// walks through every click): you need a free "OAuth Client ID" of type
-// "Android". Paste it into GOOGLE_CLIENT_ID below before building the app.
+// Android app  -> uses GOOGLE_CLIENT_ID (Android client)
+// Website      -> uses WEB_CLIENT_ID (Web application client)
 // ============================================================================
 
 import { Browser } from "@capacitor/browser";
 import { App as CapApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 
-// ⬇️ PASTE your own OAuth Client ID here (see README.md, Part 2)
+// Android app client ID (already yours, leave as is)
 export const GOOGLE_CLIENT_ID =
   "418546648121-lnpkmv07fjdfc64fqr9q5mphpbmo7hre.apps.googleusercontent.com";
+
+// ⬇️⬇️ PASTE YOUR WEB CLIENT ID HERE (the one you just created) ⬇️⬇️
+export const WEB_CLIENT_ID =
+  "418546648121-orvncb2fklc7eesptqohlvblbdjvr1ob.apps.googleusercontent.com";
 
 const REDIRECT_URI = `com.nextgen.accounts:/oauth2redirect`;
 const SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -43,7 +40,7 @@ export function signOut() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-// --- PKCE helpers (this is what keeps the login secure without a server) ---
+// --- PKCE helpers (used by the Android app) ---
 function base64url(buffer) {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))
     .replace(/\+/g, "-")
@@ -61,15 +58,45 @@ async function makePkcePair() {
   return { verifier, challenge };
 }
 
-// Opens Google's real sign-in page in the system browser (Chrome Custom
-// Tabs) — never inside the app's own webview, which Google blocks for
-// safety. When the user finishes, Google redirects back into the app.
+// --- Website sign-in helpers (NEW) ---
+function loadGoogleScript() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.oauth2) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.onload = resolve;
+    s.onerror = () =>
+      reject(new Error("Could not load Google sign-in. Check internet."));
+    document.head.appendChild(s);
+  });
+}
+
+async function webRequestToken(prompt) {
+  await loadGoogleScript();
+  return new Promise((resolve, reject) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: WEB_CLIENT_ID,
+      scope: SCOPE,
+      callback: (resp) => {
+        if (resp.error)
+          return reject(new Error(resp.error_description || resp.error));
+        saveTokens(resp);
+        resolve(resp);
+      },
+      error_callback: () =>
+        reject(new Error("Sign-in was cancelled or failed.")),
+    });
+    client.requestAccessToken({ prompt });
+  });
+}
+
+// Android: opens Google sign-in in the system browser.
+// Website: opens the Google sign-in popup.
 export async function signIn() {
   if (!Capacitor.isNativePlatform()) {
-    throw new Error(
-      "Google sign-in only works in the installed Android app, not in the browser preview.",
-    );
+    return webRequestToken("consent");
   }
+
   const { verifier, challenge } = await makePkcePair();
 
   const authUrl =
@@ -120,7 +147,18 @@ async function getAccessToken() {
   if (!tokens) throw new Error("Not signed in to Google yet.");
   if (Date.now() < tokens.expiresAt) return tokens.access_token;
 
-  // Access token expired — use the refresh token to get a new one silently.
+  // Website: ask Google for a fresh token (may show a quick popup)
+  if (!Capacitor.isNativePlatform()) {
+    try {
+      const t = await webRequestToken("");
+      return t.access_token;
+    } catch {
+      signOut();
+      throw new Error("Google session expired — please sign in again.");
+    }
+  }
+
+  // Android: use the refresh token to get a new one silently.
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -167,8 +205,7 @@ async function ensureBackupFolder(token) {
   return created.id;
 }
 
-// Uploads the JSON backup straight into the "NextGen Accounts Backups"
-// folder in the signed-in user's own Google Drive.
+// Uploads the JSON backup into the "NextGen Accounts Backups" folder.
 export async function uploadBackupToDrive(jsonString, fileName) {
   const token = await getAccessToken();
   const folderId = await ensureBackupFolder(token);
