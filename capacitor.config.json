@@ -1,0 +1,15 @@
+{
+  "appId": "com.nextgen.accounts",
+  "appName": "NextGen Accounts",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorSQLite": {
+      "iosDatabaseLocation": "Library/CapacitorDatabase",
+      "iosIsEncryption": false,
+      "androidIsEncryption": false
+    }
+  }
+}

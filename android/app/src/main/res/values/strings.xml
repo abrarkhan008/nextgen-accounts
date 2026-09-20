@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NextGen Accounts</string>
+    <string name="title_activity_main">NextGen Accounts</string>
+    <string name="package_name">com.nextgen.accounts</string>
+    <string name="custom_url_scheme">com.nextgen.accounts</string>
+</resources>
