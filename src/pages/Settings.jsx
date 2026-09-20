@@ -163,15 +163,15 @@ export default function Settings() {
             ? new Date(meta.lastDriveBackup).toLocaleString("en-IN")
             : "Never"}
         </p>
-
+        {/* 
         {!isNative && (
           <p className="text-xs text-brick-600 bg-brick-50 border border-brick-100 rounded-lg p-2 mb-3">
             Google sign-in only works in the installed Android app, not this
             browser preview.
           </p>
-        )}
+        )} */}
 
-        {isNative && !signedIn && (
+        {!signedIn && (
           <button
             onClick={handleGoogleSignIn}
             disabled={busy}
@@ -181,7 +181,7 @@ export default function Settings() {
           </button>
         )}
 
-        {isNative && signedIn && (
+               {signedIn && (
           <div className="space-y-2">
             <button
               onClick={handleDriveBackup}
