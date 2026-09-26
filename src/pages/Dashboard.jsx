@@ -60,7 +60,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid grid-cols-3 gap-3">
+      <section className="grid grid-cols-2 gap-3">
         <button
           onClick={() => navigate("/cash-in")}
           className="rounded-xl bg-white border border-steel-200 shadow-card py-4 flex flex-col items-center gap-1 active:scale-[0.98] transition"
@@ -82,6 +82,15 @@ export default function Dashboard() {
           <span className="text-navy-600 text-2xl font-semibold">📄</span>
           <span className="text-sm font-medium text-steel-700">
             Person File
+          </span>
+        </button>
+        <button
+          onClick={() => navigate("/account-ledger")}
+          className="rounded-xl bg-white border border-steel-200 shadow-card py-4 flex flex-col items-center gap-1 active:scale-[0.98] transition"
+        >
+          <span className="text-navy-600 text-2xl font-semibold">📊</span>
+          <span className="text-sm font-medium text-steel-700">
+            Account / Group
           </span>
         </button>
       </section>
@@ -108,7 +117,16 @@ export default function Dashboard() {
               No transactions yet.
             </p>
           )}
-          {!loading && txns.map((t) => <TransactionRow key={t.id} t={t} />)}
+          {!loading &&
+            txns.map((t) => (
+              <div
+                key={t.id}
+                onClick={() => navigate(`/edit-transaction/${t.id}`)}
+                className="cursor-pointer active:opacity-70"
+              >
+                <TransactionRow t={t} />
+              </div>
+            ))}
         </div>
       </section>
     </div>

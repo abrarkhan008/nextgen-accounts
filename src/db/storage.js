@@ -127,6 +127,7 @@ export async function initDatabase() {
   for (const sql of [
     "ALTER TABLE transactions ADD COLUMN partyPhone TEXT",
     "ALTER TABLE transactions ADD COLUMN paymentMode TEXT",
+    "ALTER TABLE transactions ADD COLUMN paymentReference TEXT",
     "ALTER TABLE vendors ADD COLUMN whatsapp TEXT",
   ]) {
     try {
@@ -342,8 +343,8 @@ export async function addTransaction(txn) {
   }
   await db.run(
     `INSERT INTO transactions
-     (id, type, accountId, accountName, amount, department, party, partyPhone, workDone, site, remark, creditedFrom, paymentMode, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (id, type, accountId, accountName, amount, department, party, partyPhone, workDone, site, remark, creditedFrom, paymentMode, paymentReference, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       record.id,
       record.type,
@@ -358,6 +359,7 @@ export async function addTransaction(txn) {
       record.remark || "",
       record.creditedFrom || "",
       record.paymentMode || "",
+      record.paymentReference || "",
       record.createdAt,
     ],
   );
@@ -370,6 +372,55 @@ export async function deleteTransaction(id) {
       lsRead(LS_KEYS.TRANSACTIONS, []).filter((t) => t.id !== id),
     );
   await db.run("DELETE FROM transactions WHERE id = ?", [id]);
+}
+export async function getTransactionById(id) {
+  if (!isNative())
+    return lsRead(LS_KEYS.TRANSACTIONS, []).find((t) => t.id === id) || null;
+  const rows =
+    (await db.query("SELECT * FROM transactions WHERE id = ?", [id])).values ||
+    [];
+  return rows[0] || null;
+}
+
+export async function updateTransaction(id, patch) {
+  const existing = await getTransactionById(id);
+  if (!existing) return null;
+  const merged = { ...existing, ...patch };
+
+  if (!isNative()) {
+    const list = lsRead(LS_KEYS.TRANSACTIONS, []);
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx === -1) return null;
+    list[idx] = merged;
+    lsWrite(LS_KEYS.TRANSACTIONS, list);
+    return merged;
+  }
+
+  await db.run(
+    `UPDATE transactions SET
+       type = ?, accountId = ?, accountName = ?, amount = ?, department = ?,
+       party = ?, partyPhone = ?, workDone = ?, site = ?, remark = ?,
+       creditedFrom = ?, paymentMode = ?, paymentReference = ?, createdAt = ?
+     WHERE id = ?`,
+    [
+      merged.type,
+      merged.accountId || null,
+      merged.accountName || "",
+      merged.amount || 0,
+      merged.department || "",
+      merged.party || "",
+      merged.partyPhone || "",
+      merged.workDone || "",
+      merged.site || "",
+      merged.remark || "",
+      merged.creditedFrom || "",
+      merged.paymentMode || "",
+      merged.paymentReference || "",
+      merged.createdAt,
+      id,
+    ],
+  );
+  return merged;
 }
 
 export async function getTodayTotals() {
@@ -523,8 +574,8 @@ export async function importAllData(data) {
   }
   for (const t of data.transactions || []) {
     await db.run(
-      `INSERT INTO transactions (id, type, accountId, accountName, amount, department, party, partyPhone, workDone, site, remark, creditedFrom, paymentMode, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions (id, type, accountId, accountName, amount, department, party, partyPhone, workDone, site, remark, creditedFrom, paymentMode, paymentReference, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         t.id,
         t.type,
@@ -539,6 +590,7 @@ export async function importAllData(data) {
         t.remark || "",
         t.creditedFrom || "",
         t.paymentMode || "",
+        t.paymentReference || "",
         t.createdAt,
       ],
     );

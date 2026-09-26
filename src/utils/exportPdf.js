@@ -1,14 +1,10 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { saveAndShareFile } from "./saveFile";
 
-export async function exportReportPdf({
-  title,
-  subtitle,
-  rows,
-  totals,
-  fileName,
-}) {
+function buildDoc({ title, subtitle, rows, totals }) {
   const doc = new jsPDF();
 
   doc.setFontSize(16);
@@ -56,6 +52,27 @@ export async function exportReportPdf({
     finalY + 14,
   );
 
+  return doc;
+}
+
+export async function exportReportPdf({
+  title,
+  subtitle,
+  rows,
+  totals,
+  fileName,
+}) {
+  const doc = buildDoc({ title, subtitle, rows, totals });
   const base64 = doc.output("datauristring").split(",")[1];
   await saveAndShareFile(fileName, base64);
+}
+
+export async function previewReportPdf({ title, subtitle, rows, totals }) {
+  const doc = buildDoc({ title, subtitle, rows, totals });
+  const blobUrl = doc.output("bloburl");
+  if (Capacitor.isNativePlatform()) {
+    await Browser.open({ url: blobUrl });
+  } else {
+    window.open(blobUrl, "_blank");
+  }
 }

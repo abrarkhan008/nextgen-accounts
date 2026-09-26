@@ -8,6 +8,8 @@ import {
 } from "../db/storage";
 import { exportReportPdf } from "../utils/exportPdf";
 import { exportReportExcel } from "../utils/exportExcel";
+import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 
 const MONTHS = [
   "January",
@@ -232,15 +234,25 @@ export default function Reports() {
 
       <button
         onClick={async () => {
-          if (navigator.share) {
-            try {
+          const shareText = `${label}\nTotal In: ₹${totals.cashIn}\nTotal Out: ₹${totals.cashOut}\nBalance: ₹${totals.balance}`;
+          try {
+            if (Capacitor.isNativePlatform()) {
+              await Share.share({
+                title: `NextGen Accounts — ${label}`,
+                text: shareText,
+              });
+            } else if (navigator.share) {
               await navigator.share({
                 title: `NextGen Accounts — ${label}`,
-                text: `${label}\nTotal In: ₹${totals.cashIn}\nTotal Out: ₹${totals.cashOut}\nBalance: ₹${totals.balance}`,
+                text: shareText,
               });
-            } catch {}
-          } else {
-            alert("Sharing is only available on the installed Android app.");
+            } else {
+              alert(
+                "Sharing isn't supported in this browser preview. It will work in the installed app.",
+              );
+            }
+          } catch (e) {
+            // user cancelled the share sheet — ignore
           }
         }}
         className="w-full rounded-xl border border-navy-300 text-navy-700 text-sm font-medium py-3"
