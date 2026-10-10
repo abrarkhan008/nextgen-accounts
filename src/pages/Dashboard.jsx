@@ -16,8 +16,8 @@ export default function Dashboard() {
   const [txns, setTxns] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent) {
+    if (!silent) setLoading(true);
     const [t, o, list] = await Promise.all([
       getTodayTotals(),
       getOverallTotals(),
@@ -33,6 +33,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     load();
+    const timer = setInterval(() => load(true), 15000);
+    return () => clearInterval(timer);
   }, [query]);
 
   return (
