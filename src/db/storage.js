@@ -601,9 +601,8 @@
 // NextGen Accounts — Data Layer (shared online database)
 // All 3 users read/write the same data through the server.
 
-const API_URL = "https://nextgen-server-tg3o.onrender.com"; // <-- change this
-const APP_KEY =
-  "Nextgenprefab2026"; // <-- same as Render APP_KEY
+const API_URL = "https://nextgen-server-4w4w.onrender.com"; // <-- change this
+const APP_KEY = "Nextgenprefab2026"; // <-- same as Render APP_KEY
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
